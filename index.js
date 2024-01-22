@@ -1,7 +1,7 @@
 
 require('dotenv').config();
-console.log(process.env.EMAIL_USER);
-console.log(process.env.EMAIL_PASS);
+const { simpleParser } = require('mailparser');
+
 
 var Imap = require('imap'),
     inspect = require('util').inspect;
@@ -14,8 +14,6 @@ var imap = new Imap({
   port: parseInt(process.env.EMAIL_PORT, 10),
   tls: true
 });
-
-
 
 function openInbox(cb) {
     imap.openBox('INBOX', false, function(err, box) {
@@ -31,19 +29,29 @@ function openInbox(cb) {
         var headerBuffer = '';
         var bodyBuffer = '';
   
+
         msg.on('body', function(stream, info) {
-          var buffer = '';
-          stream.on('data', function(chunk) {
-            buffer += chunk.toString('utf8');
-          });
-          stream.once('end', function() {
-            if (info.which === 'TEXT')
-              bodyBuffer = buffer;
-            else
-              headerBuffer = buffer;
-          });
-        });
-  
+          if (info.which === 'TEXT') {
+            // Accumulate the stream data into a buffer
+            let rawEmail = '';
+            stream.on('data', function(chunk) {
+              rawEmail += chunk.toString('utf8');
+            });
+        
+            stream.once('end', function() {
+              // Check if HTML content is available using regex
+              let regexPattern = /<div[^>]*>[\s\S]*?<\/div>/gi;
+              let htmlMatches = rawEmail.match(regexPattern);
+        
+              if (htmlMatches && htmlMatches.length > 0) {
+                console.log('Extracted HTML content:', htmlMatches[0]);
+              } else {
+                console.log('No HTML <div> content found in the email.');
+              }
+            });
+          }
+        }); 
+        
         msg.once('end', function() {
           //console.log('Headers: %s', inspect(Imap.parseHeader(headerBuffer)));
           console.log('Body: %s', bodyBuffer);
@@ -61,9 +69,9 @@ function openInbox(cb) {
     });
   }
   
- 
+
 imap.once('ready', function() {
-    console.log("check")
+
   openInbox(function(err, box) {
     if (err) throw err;
     var f = imap.seq.fetch(box.messages.total+':'+box.messages.total, {
@@ -71,7 +79,7 @@ imap.once('ready', function() {
       struct: true
     });
     f.on('message', function(msg, seqno) {
-      console.log('Message #%d', seqno);
+     
       var prefix = '(#' + seqno + ') ';
       msg.on('body', function(stream, info) {
         var buffer = '';
