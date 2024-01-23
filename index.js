@@ -2,7 +2,6 @@
 require('dotenv').config();
 
 
-
 var Imap = require('imap'),
     inspect = require('util').inspect;
 
@@ -15,7 +14,7 @@ var imap = new Imap({
   tls: true
 });
 
-function openInbox(cb) {
+function openInbox() {
     imap.openBox('INBOX', false, function(err, box) {
       if (err) throw err;
   
@@ -26,9 +25,7 @@ function openInbox(cb) {
   
       f.on('message', function(msg, seqno) {
        
-        var headerBuffer = '';
-        var bodyBuffer = '';
-  
+     
 
         msg.on('body', function(stream, info) {
           let buffer = '';
@@ -76,48 +73,11 @@ function openInbox(cb) {
 
 imap.once('ready', function() {
 
-  openInbox(function(err, box) {
-    if (err) throw err;
-    var f = imap.seq.fetch(box.messages.total+':'+box.messages.total, {
-      bodies: ['HEADER.FIELDS (FROM TO SUBJECT DATE)','TEXT'],
-      struct: true
-    });
-    f.on('message', function(msg, seqno) {
-     
-      var prefix = '(#' + seqno + ') ';
-      msg.on('body', function(stream, info) {
-        var buffer = '';
-        stream.on('data', function(chunk) {
-          buffer += chunk.toString('utf8');
-        });
-        stream.once('end', function() {
-          console.log(prefix + 'Parsed header: %s', inspect(Imap.parseHeader(buffer)));
-        });
-      });
-      msg.once('attributes', function(attrs) {
-        console.log(prefix + 'Attributes: %s', inspect(attrs, false, 8));
-      });
-      msg.once('end', function() {
-        console.log(prefix + 'Finished');
-      });
-    });
-    f.once('error', function(err) {
-      console.log('Fetch error: ' + err);
-    });
-    f.once('end', function() {
-      console.log('Done fetching all messages!');
-      imap.end();
-    });
-  });
+
+
+  openInbox();
 });
 
 
-imap.once('error', function(err) {
-    console.log(err);
-  });
    
-  imap.once('end', function() {
-    console.log('Connection ended');
-  });
-   
-  imap.connect();
+imap.connect();
