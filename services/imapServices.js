@@ -1,6 +1,6 @@
 
 require('dotenv').config();
-
+const { simpleParser } = require('mailparser');
 
 
 var Imap = require('imap'),
@@ -25,40 +25,36 @@ function openInbox(cb) {
       });
   
       f.on('message', function(msg, seqno) {
-       
+        console.log('Message #%d', seqno);
         var headerBuffer = '';
         var bodyBuffer = '';
   
 
         msg.on('body', function(stream, info) {
-          let buffer = '';
-          stream.on('data', function(chunk) {
-            buffer += chunk.toString('utf8');
-          });
+          if (info.which === 'TEXT') {
+            // Accumulate the stream data into a buffer
+            let rawEmail = '';
+            stream.on('data', function(chunk) {
+              rawEmail += chunk.toString('utf8');
+            });
         
-          stream.once('end', function() {
-            if (info.which === 'HEADER.FIELDS (FROM TO SUBJECT DATE)') {
-              // Parse and extract the date from the header
-              let header = Imap.parseHeader(buffer);
-              if (header.date) {
-                console.log('Date of the email:', header.date[0]); // Print the date
-              }
-            } else if (info.which === 'TEXT') {
+            stream.once('end', function() {
               // Check if HTML content is available using regex
               let regexPattern = /<div[^>]*>[\s\S]*?<\/div>/gi;
-              let htmlMatches = buffer.match(regexPattern);
+              let htmlMatches = rawEmail.match(regexPattern);
         
               if (htmlMatches && htmlMatches.length > 0) {
-                console.log(htmlMatches[0]); // Print the HTML content
+                console.log('Extracted HTML content:', htmlMatches[0]);
               } else {
                 console.log('No HTML <div> content found in the email.');
               }
-            }
-          });
-        });
+            });
+          }
+        }); 
         
         msg.once('end', function() {
-         
+          //console.log('Headers: %s', inspect(Imap.parseHeader(headerBuffer)));
+          console.log('Body: %s', bodyBuffer);
         });
       });
   
@@ -67,7 +63,7 @@ function openInbox(cb) {
       });
   
       f.once('end', function() {
-       
+        console.log('Done fetching the most recent message.');
         imap.end();
       });
     });
