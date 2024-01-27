@@ -7,6 +7,7 @@ const mongoClient=new MongoClient(process.env.MONGODB_URL)
 var Imap = require('imap'),
     inspect = require('util').inspect;
 
+
  
 var imap = new Imap({
   user: process.env.EMAIL_USER,
@@ -100,7 +101,18 @@ function openInbox() {
     }
   }
 
-  function openInbox() {
+
+  async function isMongoClientConnected() {
+    try {
+      // Try a simple operation to check if the client is connected
+      await mongoClient.db().admin().ping();
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /*function openInbox() {
     imap.openBox('INBOX', false, async function(err, box) {
       if (err) throw err;
   
@@ -176,13 +188,122 @@ function openInbox() {
         imap.end();
       });
     });
-  } 
+  } */
+
+
+  function openInbox() {
+    imap.openBox('INBOX', false, async function(err, box) {
+      if (err) throw err;
+  
+      // Connect to MongoDB
+      await mongoClient.connect();
+      const db = mongoClient.db('kay_haal_chaal');
+      const collection = db.collection('emails');
+  
+      var messageNumber = box.messages.total; // Get the number of the most recent message
+      var f = imap.seq.fetch(messageNumber + ':' + messageNumber, {
+        bodies: ['HEADER.FIELDS (FROM TO SUBJECT DATE)', 'TEXT']
+      });
+  
+      f.on('message', function(msg, seqno) {
+        let emailData = {
+          html: '',
+          text: '',
+          date: '',
+          subject: '',
+          from: ''
+        };
+  
+        msg.on('body', function(stream, info) {
+          let buffer = '';
+          stream.on('data', function(chunk) {
+            buffer += chunk.toString('utf8');
+          });
+  
+          stream.once('end', async function() {
+            if (info.which === 'HEADER.FIELDS (FROM TO SUBJECT DATE)') {
+              let header = Imap.parseHeader(buffer);
+              if (header.date) {
+                emailData.date = header.date[0];
+              }
+              if (header.subject) {
+                emailData.subject = header.subject[0];
+              }
+              if (header.from) {
+                emailData.from = header.from[0];
+              }
+            } else if (info.which === 'TEXT') {
+              emailData.text = buffer;
+            }
+  
+            // Create a unique identifier
+            const emailId = emailData.date + emailData.from + emailData.subject;
+  
+            // Check if email already exists in the database
+            const emailExists = await collection.findOne({ id: emailId });
+           
+            if (!emailExists) {
+              // Insert email data into MongoDB
+              try {
+                await collection.insertOne({ ...emailData, id: emailId });
+                console.log('Email data inserted into MongoDB');
+              } catch (insertError) {
+                console.error('Error inserting email data into MongoDB:', insertError);
+              }
+            } else {
+              console.log('Duplicate email skipped');
+             // mongoClient.close();
+            }
+          
+            
+  
+     
+          });
+        });
+  
+        f.once('error', function(err) {
+          console.log('Fetch error: ' + err);
+        });
+  
+        f.once('end', async function() {
+          console.log('Done fetching the most recent message.');
+          imap.end();
+
+          if (await isMongoClientConnected()) {
+            try {
+              await mongoClient.close();
+              console.log('MongoDB connection closed.');
+            } catch (error) {
+              console.error('Error closing MongoDB connection:', error);
+            }
+          } else {
+            console.log('MongoDB connection was already closed.');
+          }
+     
+          
+
+        
+        
+        });
+      });
+
+     
+      
+
+     
+  
+    });
+
+   
+  }
+  
 
 imap.once('ready', function() {
 
 
 
-  openInbox();
+ openInbox();
+ //fetchAndPrintData();
 });
 
 
@@ -190,4 +311,4 @@ imap.once('ready', function() {
 imap.connect();
 
 
-fetchAndPrintData();
+
