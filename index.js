@@ -2,6 +2,16 @@
 require('dotenv').config();
 const { sendEmail } = require('./sendEmail'); // Adjust the path as necessary
 
+const cron = require('node-cron');
+
+// Define time components
+const hours = 21; // 3 PM
+const minutes = 0;
+const seconds = 0;
+
+const schedule = `${seconds} ${minutes} ${hours} * * *`;
+
+
 
 const {MongoClient}=require('mongodb');
 const mongoClient=new MongoClient(process.env.MONGODB_URL)
@@ -168,7 +178,7 @@ var imap = new Imap({
 
 
 
-/*
+
 function reconnectAndOpenInbox() {
   console.log("inside reconnect and open Inbox")
   if (imap.state === 'disconnected') {
@@ -177,6 +187,7 @@ function reconnectAndOpenInbox() {
   }
   openInbox();
 }
+/*
 
 imap.once('ready', function() {
   openInbox();
@@ -187,7 +198,31 @@ imap.connect();*/
 
 // fetchAndPrintData();
 
-sendEmail("adirsingh96@gmail.com", "daily update", "kya haal chaal hai bhai?", "<b>kya haal chaal hai bhai?</b>").catch(console.error);
+
+// IMAP ready event
+imap.once('ready', function() {
+ // openInbox();
+
+  // Schedule the inbox checking task to run every minute
+  cron.schedule('* * * * *', () => {
+    console.log("one minute timer triggered")
+    reconnectAndOpenInbox();
+  });
+});
+
+
+
+cron.schedule(schedule, () => {
+  // Your scheduled task
+  console.log("triggred...")
+  sendEmail("adirsingh96@gmail.com", "daily update", "kya haal chaal hai bhai?", "<b>kya haal chaal hai bhai?</b>").catch(console.error);
+
+
+}, {
+  timezone: "Asia/Kolkata"
+});
+
+imap.connect();
 
 
 
