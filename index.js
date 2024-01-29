@@ -144,7 +144,7 @@ var imap = new Imap({
   
         f.once('end', async function() {
           console.log('Done fetching the most recent message.');
-         // imap.end();
+         imap.end();
 
           if (await isMongoClientConnected()) {
             try {
