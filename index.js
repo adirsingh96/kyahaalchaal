@@ -19,6 +19,8 @@ const mongoClient=new MongoClient(process.env.MONGODB_URL)
 var Imap = require('imap'),
     inspect = require('util').inspect;
 
+console.log(process.env.EMAIL_USER)    
+console.log(process.env.EMAIL_PASS)
 
  
 var imap = new Imap({
