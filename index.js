@@ -189,16 +189,7 @@ function reconnectAndOpenInbox() {
   }
   openInbox();
 }
-/*
 
-imap.once('ready', function() {
-  openInbox();
-  setInterval(reconnectAndOpenInbox, 60000); // every 1 minute
-});
-
-imap.connect();*/
-
-// fetchAndPrintData();
 
 
 // IMAP ready event
@@ -223,6 +214,23 @@ cron.schedule(schedule, () => {
 }, {
   timezone: "Asia/Kolkata"
 });
+
+cron.schedule('0 9 * * *', () => {
+  console.log('Running the scheduled task at 9 AM daily...');
+  const days = 7; // Adjust as needed
+  weeklyReview(days).then(content => {
+    // Logic to handle the content, e.g., send an email
+    console.log(content); // Example action
+    askGPT(content).then(response =>{
+      //console.log(response)
+      sendEmail('adirsingh96@gmail.com','Do this to make you next week productive','NA',response)
+    }).catch(error => console.log(error))
+  }).catch(console.error);
+}
+, {
+  timezone: "Asia/Kolkata"
+});
+
 
 imap.connect();
 
