@@ -1,8 +1,10 @@
 
 require('dotenv').config();
 const { sendEmail } = require('./sendEmail'); // Adjust the path as necessary
-
+const {MongoClient}=require('mongodb');
+const { weeklyReview } = require('./emailEntries');
 const cron = require('node-cron');
+const {askGPT}=require('./open_ai_test')
 
 // Define time components
 const hours = 21; // 3 PM
@@ -13,7 +15,7 @@ const schedule = `${seconds} ${minutes} ${hours} * * *`;
 
 
 
-const {MongoClient}=require('mongodb');
+
 const mongoClient=new MongoClient(process.env.MONGODB_URL)
 
 var Imap = require('imap'),
@@ -215,19 +217,20 @@ cron.schedule(schedule, () => {
   timezone: "Asia/Kolkata"
 });
 
-cron.schedule('0 9 * * *', () => {
+cron.schedule('45 8 * * *', () => {
   console.log('Running the scheduled task at 9 AM daily...');
   const days = 7; // Adjust as needed
   weeklyReview(days).then(content => {
     // Logic to handle the content, e.g., send an email
     console.log(content); // Example action
     askGPT(content).then(response =>{
-      //console.log(response)
+      console.log(response)
       sendEmail('adirsingh96@gmail.com','Do this to make you next week productive','NA',response)
     }).catch(error => console.log(error))
   }).catch(console.error);
 }
 , {
+  scheduled: true,
   timezone: "Asia/Kolkata"
 });
 

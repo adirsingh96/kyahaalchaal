@@ -10,14 +10,16 @@ async function loadOpenAI() {
 }
 
 async function askGPT(query) {
+  console.log("inside ask gpt")
     try {
         const guide = 'This my journal entry for last weeks with html taks,based on it give me 3 action points specific to my problems to make this week productive (html format the response so that it looks good on email):';
+        console.log("loading openAI")
         const openai = await loadOpenAI();
         const chatCompletion = await openai.chat.completions.create({
           model: 'gpt-3.5-turbo',
           messages: [{ role: 'user', content: guide + query }],
         });
-    
+        console.log("returning")
         return chatCompletion.choices[0].message.content;
       } catch (error) {
         console.error("Error fetching completion from OpenAI:", error);
